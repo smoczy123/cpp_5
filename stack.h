@@ -4,6 +4,7 @@
 namespace cxx {
     template <typename K, typename V>
     class stack {
+    public:
         stack();
 
         stack(stack const &);
