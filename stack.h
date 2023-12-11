@@ -10,72 +10,79 @@ namespace cxx {
     private:
         struct stack_element_t;
         struct list_element_t;
-        struct list_element_t{
+
+        struct list_element_t {
             typename std::map<K, std::stack<stack_element_t>>::iterator it;
 
             list_element_t();
-            list_element_t(K& key, std::map<K, std::stack<stack_element_t>>& map) {
+
+            list_element_t(const K &key, std::map<K, std::stack<stack_element_t>> &map) {
                 it = map.find(key);
             }
         };
+
         struct stack_element_t {
             V value;
             typename std::list<list_element_t>::iterator it;
 
             stack_element_t();
-            stack_element_t(V& val, std::list<list_element_t>& list) {
+
+            stack_element_t(const V &val, std::list<list_element_t> &list) {
                 value = val;
                 it = list.begin();
             }
         };
+
         std::list<list_element_t> actual_stack;
         std::map<K, std::stack<stack_element_t>> access_map;
     public:
         stack() noexcept {
-            actual_stack = std::list<map_iter>();
-            access_map = std::map<K, std::stack<std::pair<list_iter, V>>>();
+            actual_stack = std::list<list_element_t>();
+            access_map = std::map<K, std::stack<stack_element_t>>();
         }
 
         stack(stack const &) noexcept;
 
         stack(stack &&) noexcept;
 
-        stack & operator=(stack);
+        stack &operator=(stack);
 
-        void push(K const & key, V const & value) {
+        void push(K const &key, V const &value) {
             if (access_map.count(key) == 0) {
-                access_map.insert({key, std::stack<std::pair<list_iter, V>>()});
+                access_map.insert({key, std::stack<stack_element_t>()});
             }
 
-            actual_stack.push_front(access_map.find(key));
-            access_map.at(key).push({actual_stack.begin(), value});
+            actual_stack.push_front(list_element_t(key, access_map));
+            access_map.at(key).push(stack_element_t(value, actual_stack));
         }
 
         void pop() {
-            auto iter = actual_stack.front();
+            auto elem = actual_stack.front();
             actual_stack.pop_front();
-            iter->second.pop();
+            elem.it->second.pop();
         }
 
-        void pop(K const & key) {
-            std::pair<list_iter, V> pair = access_map.at(key).top();
-            actual_stack.erase(pair.first);
+        void pop(K const &key) {
+            stack_element_t pair = access_map.at(key).top();
+            actual_stack.erase(pair.it);
             access_map.at(key).pop();
         }
 
         std::pair<K const &, V &> front() {
-            auto iter = actual_stack.front();
-            return std::pair<K const &, V&>({iter.first, iter.second.top().second});
-        }
-        std::pair<K const &, V const &> front() const {
-            auto iter = actual_stack.front();
-            return std::pair<K const &, V const &>({iter.first, iter.second.top().second});
+            list_element_t elem = actual_stack.front();
+            return std::pair<K const &, V &>({elem.it->first, elem.it->second.top()});
         }
 
-        V & front(K const & key) {
+        std::pair<K const &, V const &> front() const {
+            list_element_t elem = actual_stack.front();
+            return std::pair<K const &, V const &>({elem.it->first, elem.it->second.top()});
+        }
+
+        V &front(K const &key) {
             return access_map.at(key).top();
         }
-        V const & front(K const & key) const {
+
+        V const &front(K const &key) const {
             return access_map.at(key).top();
         }
 
@@ -83,7 +90,7 @@ namespace cxx {
             return actual_stack.size();
         }
 
-        std::size_t count(K const & key) const {
+        std::size_t count(K const &key) const {
             return access_map.at(key).size();
         }
 
@@ -132,5 +139,6 @@ namespace cxx {
         stack<K, V>::const_iterator cend() {
             return const_iterator(access_map.cend());
         }
+
     };
 }
