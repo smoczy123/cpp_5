@@ -14,8 +14,6 @@ namespace cxx {
         struct list_element_t {
             typename std::map<K, std::stack<stack_element_t>>::iterator it;
 
-            list_element_t();
-
             list_element_t(const K &key, std::map<K, std::stack<stack_element_t>> &map) {
                 it = map.find(key);
             }
@@ -24,8 +22,6 @@ namespace cxx {
         struct stack_element_t {
             V value;
             typename std::list<list_element_t>::iterator it;
-
-            stack_element_t();
 
             stack_element_t(const V &val, std::list<list_element_t> &list) {
                 value = val;
@@ -41,11 +37,11 @@ namespace cxx {
             access_map = std::map<K, std::stack<stack_element_t>>();
         }
 
-        stack(stack const &) noexcept;
+        //stack(stack const &) noexcept;
 
-        stack(stack &&) noexcept;
+        //stack(stack &&) noexcept;
 
-        stack &operator=(stack);
+        //stack &operator=(stack);
 
         void push(K const &key, V const &value) {
             if (access_map.count(key) == 0) {
@@ -70,20 +66,20 @@ namespace cxx {
 
         std::pair<K const &, V &> front() {
             list_element_t elem = actual_stack.front();
-            return std::pair<K const &, V &>({elem.it->first, elem.it->second.top()});
+            return std::pair<K const &, V &>({elem.it->first, elem.it->second.top().value});
         }
 
         std::pair<K const &, V const &> front() const {
             list_element_t elem = actual_stack.front();
-            return std::pair<K const &, V const &>({elem.it->first, elem.it->second.top()});
+            return std::pair<K const &, V const &>({elem.it->first, elem.it->second.top().value});
         }
 
         V &front(K const &key) {
-            return access_map.at(key).top();
+            return access_map.at(key).top().value;
         }
 
         V const &front(K const &key) const {
-            return access_map.at(key).top();
+            return access_map.at(key).top().value;
         }
 
         std::size_t size() const {
@@ -102,15 +98,14 @@ namespace cxx {
 
 
         class const_iterator {
-            using iterator_category = std::forward_iterator_tag;
-            using value_type = K;
-            using pointer = K*;
-            using reference = K&;
-            cmap_iter iter;
+            using pointer = const K*;
+            using reference = const K&;
+            typename std::map<K, std::stack<stack_element_t>>::const_iterator iter;
 
-            const_iterator(cmap_iter i) : iter(i) {}
+
 
         public:
+            const_iterator(typename std::map<K, std::stack<stack_element_t>>::const_iterator i) : iter(i) {}
             const_iterator &operator++() noexcept {
                 iter++;
                 return *this;
