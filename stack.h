@@ -8,11 +8,28 @@ namespace cxx {
     template <typename K, typename V>
     class stack {
     private:
-        using map_iter = typename std::map<K, std::stack<std::pair<list_iter, V>>>::iterator;
-        using cmap_iter = typename std::map<K, std::stack<std::pair<list_iter, V>>>::const_iterator;
-        using list_iter = typename std::list<map_iter>::iterator;
-        std::list<map_iter> actual_stack;
-        std::map<K, std::stack<std::pair<list_iter, V>>> access_map;
+        struct stack_element_t;
+        struct list_element_t;
+        struct list_element_t{
+            typename std::map<K, std::stack<stack_element_t>>::iterator it;
+
+            list_element_t();
+            list_element_t(K& key, std::map<K, std::stack<stack_element_t>>& map) {
+                it = map.find(key);
+            }
+        };
+        struct stack_element_t {
+            V value;
+            typename std::list<list_element_t>::iterator it;
+
+            stack_element_t();
+            stack_element_t(V& val, std::list<list_element_t>& list) {
+                value = val;
+                it = list.begin();
+            }
+        };
+        std::list<list_element_t> actual_stack;
+        std::map<K, std::stack<stack_element_t>> access_map;
     public:
         stack() noexcept {
             actual_stack = std::list<map_iter>();
