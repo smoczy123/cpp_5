@@ -1,8 +1,10 @@
-
 #include <utility>
 #include <stack>
 #include <map>
 #include <list>
+#include <cstring>
+#include <deque>
+#include <memory>
 
 namespace cxx {
     template <typename K, typename V>
@@ -12,9 +14,9 @@ namespace cxx {
         struct list_element_t;
 
         struct list_element_t {
-            typename std::map<K, std::stack<stack_element_t>>::iterator it;
+            typename std::map<K,std::deque<stack_element_t>>::iterator it;
 
-            list_element_t(const K &key, std::map<K, std::stack<stack_element_t>> &map) {
+            list_element_t(const K &key, std::map<K, std::deque<stack_element_t>> &map) {
                 it = map.find(key);
             }
         };
@@ -29,70 +31,110 @@ namespace cxx {
             }
         };
 
-        std::list<list_element_t> actual_stack;
-        std::map<K, std::stack<stack_element_t>> access_map;
+        std::shared_ptr<std::list<list_element_t>> actual_stack;
+        std::shared_ptr<std::map<K, std::deque<stack_element_t>>> access_map;
+        
+        void copy(stack const &s){
+        	actual_stack = std::make_shared<std::list<list_element_t>>();
+            access_map = std::make_shared<std::map<K, std::deque<stack_element_t>>>();
+            std::map<K, int> iters;
+            for(auto el : (*s.access_map)){
+            	iters.insert(std::make_pair(el.first,0));
+            }
+        	for(typename std::list<list_element_t>::reverse_iterator rit = (*s.actual_stack).rbegin(); rit != (*s.actual_stack).rend(); ++rit){
+        		this->push(rit->it->first,rit->it->second[rit->it->second.size()-iters[rit->it->first]-1].value);
+        		iters.at(rit->it->first)++;
+        	}
+        }
+        
+        void check_if_shared(){
+        	if(actual_stack.use_count()>1){
+        		stack s=*this;
+        		*this=s;
+        	}
+        }
+        
     public:
         stack() noexcept {
-            actual_stack = std::list<list_element_t>();
-            access_map = std::map<K, std::stack<stack_element_t>>();
+            actual_stack = std::make_shared<std::list<list_element_t>>();
+            access_map = std::make_shared<std::map<K, std::deque<stack_element_t>>>();
+        } 
+
+        stack(stack const &s) noexcept{
+        	copy(s);
         }
-
-        //stack(stack const &) noexcept;
-
-        //stack(stack &&) noexcept;
-
-        //stack &operator=(stack);
-
+        
+        stack(stack && s) noexcept{
+        	if(this != &s) {
+        		actual_stack = std::move(s.actual_stack);
+        		access_map = std::move(s.access_map);
+        	}
+        }	
+        
+        
+        stack & operator = (stack const & s) noexcept{
+        	if(&s!=this){
+                  actual_stack = s.actual_stack;
+          		  access_map = s.access_map;
+        	}
+        	return * this;
+        }
+        
         void push(K const &key, V const &value) {
-            if (access_map.count(key) == 0) {
-                access_map.insert({key, std::stack<stack_element_t>()});
+        	check_if_shared();
+            if ((*access_map).count(key) == 0) {
+                (*access_map).insert({key, std::deque<stack_element_t>()});
             }
 
-            actual_stack.push_front(list_element_t(key, access_map));
-            access_map.at(key).push(stack_element_t(value, actual_stack));
+            (*actual_stack).push_front(list_element_t(key, *access_map));
+            (*access_map).at(key).push_front(stack_element_t(value, *actual_stack));
         }
 
         void pop() {
-            auto elem = actual_stack.front();
-            actual_stack.pop_front();
-            elem.it->second.pop();
+        	check_if_shared();
+            auto elem = (*actual_stack).front();
+            (*actual_stack).pop_front();
+            elem.it->second.pop_front();
         }
 
         void pop(K const &key) {
-            stack_element_t pair = access_map.at(key).top();
-            actual_stack.erase(pair.it);
-            access_map.at(key).pop();
+        	check_if_shared();
+            stack_element_t pair = (*access_map).at(key).front();
+            (*actual_stack).erase(pair.it);
+            (*access_map).at(key).pop_front();
         }
 
         std::pair<K const &, V &> front() {
-            list_element_t elem = actual_stack.front();
-            return std::pair<K const &, V &>({elem.it->first, elem.it->second.top().value});
+            list_element_t elem = (*actual_stack).front();
+            return std::pair<K const &, V &>({elem.it->first, elem.it->second.front().value});
         }
 
         std::pair<K const &, V const &> front() const {
-            list_element_t elem = actual_stack.front();
-            return std::pair<K const &, V const &>({elem.it->first, elem.it->second.top().value});
+            list_element_t elem = (*actual_stack).front();
+            return std::pair<K const &, V const &>({elem.it->first, elem.it->second.front().value});
         }
 
         V &front(K const &key) {
-            return access_map.at(key).top().value;
+            return (*access_map).at(key).front().value;
         }
 
         V const &front(K const &key) const {
-            return access_map.at(key).top().value;
+            return (*access_map).at(key).front().value;
         }
 
         std::size_t size() const {
-            return actual_stack.size();
+            return (*actual_stack).size();
         }
 
         std::size_t count(K const &key) const {
-            return access_map.at(key).size();
+        	if ((*access_map).count(key)==0)	return 0;
+            return (*access_map).at(key).size();
         }
 
         void clear() {
-            actual_stack.clear();
-            access_map.clear();
+        	check_if_shared();
+            (*actual_stack).clear();
+            (*access_map).clear();
         }
 
 
@@ -100,12 +142,12 @@ namespace cxx {
         class const_iterator {
             using pointer = const K*;
             using reference = const K&;
-            typename std::map<K, std::stack<stack_element_t>>::const_iterator iter;
+            typename std::map<K, std::deque<stack_element_t>>::const_iterator iter;
 
 
 
         public:
-            const_iterator(typename std::map<K, std::stack<stack_element_t>>::const_iterator i) : iter(i) {}
+            const_iterator(typename std::map<K, std::deque<stack_element_t>>::const_iterator i) : iter(i) {}
             const_iterator &operator++() noexcept {
                 iter++;
                 return *this;
@@ -129,10 +171,10 @@ namespace cxx {
         };
 
         stack<K, V>::const_iterator cbegin() {
-            return const_iterator(access_map.cbegin());
+            return const_iterator((*access_map).cbegin());
         }
         stack<K, V>::const_iterator cend() {
-            return const_iterator(access_map.cend());
+            return const_iterator((*access_map).cend());
         }
 
     };
