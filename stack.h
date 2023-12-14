@@ -10,6 +10,7 @@ namespace cxx {
     template <typename K, typename V>
     class stack {
     private:
+        bool referenced;
         struct stack_element_t;
         struct list_element_t;
 
@@ -48,7 +49,7 @@ namespace cxx {
         }
         
         void check_if_shared(){
-        	if(actual_stack.use_count()>1){
+        	if(actual_stack.use_count() > 1){
         		stack s=*this;
         		*this=s;
         	}
@@ -56,15 +57,18 @@ namespace cxx {
         
     public:
         stack() noexcept {
+            referenced = false;
             actual_stack = std::make_shared<std::list<list_element_t>>();
             access_map = std::make_shared<std::map<K, std::deque<stack_element_t>>>();
         } 
 
         stack(stack const &s) noexcept{
+            referenced = false;
         	copy(s);
         }
         
         stack(stack && s) noexcept{
+            referenced = false;
         	if(this != &s) {
         		actual_stack = std::move(s.actual_stack);
         		access_map = std::move(s.access_map);
@@ -73,6 +77,7 @@ namespace cxx {
         
         
         stack & operator = (stack const & s) noexcept{
+            referenced = false;
         	if(&s!=this){
                   actual_stack = s.actual_stack;
           		  access_map = s.access_map;
@@ -81,6 +86,7 @@ namespace cxx {
         }
         
         void push(K const &key, V const &value) {
+            referenced = false;
         	check_if_shared();
             if ((*access_map).count(key) == 0) {
                 (*access_map).insert({key, std::deque<stack_element_t>()});
@@ -91,6 +97,7 @@ namespace cxx {
         }
 
         void pop() {
+            referenced = false;
         	check_if_shared();
             auto elem = (*actual_stack).front();
             (*actual_stack).pop_front();
@@ -98,6 +105,7 @@ namespace cxx {
         }
 
         void pop(K const &key) {
+            referenced = false;
         	check_if_shared();
             stack_element_t pair = (*access_map).at(key).front();
             (*actual_stack).erase(pair.it);
@@ -105,6 +113,7 @@ namespace cxx {
         }
 
         std::pair<K const &, V &> front() {
+            referenced = true;
             list_element_t elem = (*actual_stack).front();
             return std::pair<K const &, V &>({elem.it->first, elem.it->second.front().value});
         }
@@ -115,6 +124,7 @@ namespace cxx {
         }
 
         V &front(K const &key) {
+            referenced = true;
             return (*access_map).at(key).front().value;
         }
 
