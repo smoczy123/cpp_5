@@ -5,6 +5,7 @@
 #include <cstring>
 #include <deque>
 #include <memory>
+#include <stdexcept>
 
 namespace cxx {
     template <typename K, typename V>
@@ -109,6 +110,9 @@ namespace cxx {
         }
 
         void pop() {
+            if (size() == 0) {
+                throw std::invalid_argument("");
+            }
             check_if_shared();
             referenced = false;
             auto elem = (*actual_stack).front();
@@ -117,6 +121,9 @@ namespace cxx {
         }
 
         void pop(K const &key) {
+            if (count(key) == 0) {
+                throw std::invalid_argument("");
+            }
             check_if_shared();
             referenced = false;
             stack_element_t pair = (*access_map).at(key).front();
@@ -125,24 +132,36 @@ namespace cxx {
         }
 
         std::pair<K const &, V &> front() {
+            if (size() == 0) {
+                throw std::invalid_argument("");
+            }
             check_if_shared();
             referenced = true;
             list_element_t elem = (*actual_stack).front();
             return std::pair<K const &, V &>({elem.it->first, elem.it->second.front().value});
         }
 
-        std::pair<K const &, V const &> front() const noexcept {
+        std::pair<K const &, V const &> front() const {
+            if (size() == 0) {
+                throw std::invalid_argument("");
+            }
             list_element_t elem = (*actual_stack).front();
             return std::pair<K const &, V const &>({elem.it->first, elem.it->second.front().value});
         }
 
         V &front(K const &key) {
+            if (count(key) == 0) {
+                throw std::invalid_argument("");
+            }
             check_if_shared();
             referenced = true;
             return (*access_map).at(key).front().value;
         }
 
-        V const &front(K const &key) const noexcept {
+        V const &front(K const &key) const {
+            if (count(key) == 0) {
+                throw std::invalid_argument("");
+            }
             return (*access_map).at(key).front().value;
         }
 
@@ -164,14 +183,18 @@ namespace cxx {
 
 
         class const_iterator {
-            using pointer = const K*;
-            using reference = const K&;
-            typename std::map<K, std::deque<stack_element_t>>::const_iterator iter;
+            using c_iter =  typename std::map<K, std::deque<stack_element_t>>::const_iterator;
+            c_iter iter;
 
 
 
         public:
-            const_iterator(typename std::map<K, std::deque<stack_element_t>>::const_iterator i) : iter(i) {}
+            using difference_type = std::ptrdiff_t;
+            using value_type = const K;
+            using pointer = const K*;
+            using reference = const K&;
+            const_iterator() : iter(c_iter()) {}
+            const_iterator(c_iter i) : iter(i) {}
             const_iterator &operator++() noexcept {
                 iter++;
                 return *this;
