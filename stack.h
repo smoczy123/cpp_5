@@ -95,10 +95,10 @@ namespace cxx {
                 actual_stack = s.actual_stack;
             } else {
                 bool inserted = false;
-                auto it = access_map->begin();
+                auto map_it = access_map->begin();
                 if (access_map->count(key) == 0) {
-                    it = access_map->insert({key, std::list<stack_element_t>()}).first;
-                    inserted  = true;
+                    map_it = access_map->insert({key, std::list<stack_element_t>()}).first;
+                    inserted = true;
                 }
                 try {
                     actual_stack->push_front(list_element_t(key, *access_map));
@@ -112,7 +112,7 @@ namespace cxx {
                 }
                 catch (...) {
                     if (inserted) {
-                        access_map->erase(it);
+                        access_map->erase(map_it);
                         throw;
                     }
                 }
