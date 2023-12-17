@@ -266,6 +266,12 @@ namespace cxx {
             using reference = const K&;
             const_iterator() : iter(c_iter()) {}
             const_iterator(c_iter i) : iter(i) {}
+            const_iterator(const const_iterator& other) : iter(other.iter) {}
+            const_iterator(const_iterator&& other) noexcept : iter(std::move(other.iter)) {}
+
+            const_iterator &operator=(const const_iterator& other) = default;
+            const_iterator& operator=(const_iterator&& other) noexcept = default;
+
             const_iterator &operator++() noexcept {
                 iter++;
                 return *this;
