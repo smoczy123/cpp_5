@@ -79,7 +79,7 @@ namespace cxx {
         }	
         
         
-        stack & operator= (stack s) {
+        stack & operator= (stack s) noexcept {
             actual_stack = s.actual_stack;
             access_map = s.access_map;
             referenced = s.referenced;
@@ -94,16 +94,27 @@ namespace cxx {
                 access_map = s.access_map;
                 actual_stack = s.actual_stack;
             } else {
+                bool inserted = false;
+                auto it = access_map->begin();
                 if (access_map->count(key) == 0) {
-                    access_map->insert({key, std::list<stack_element_t>()});
+                    it = access_map->insert({key, std::list<stack_element_t>()}).first;
+                    inserted  = true;
                 }
-                actual_stack->push_front(list_element_t(key, *access_map));
-                auto it = actual_stack->begin();
                 try {
-                    access_map->at(key).push_front(stack_element_t(value, *actual_stack));
-                } catch (...) {
-                    actual_stack->erase(it);
-                    throw;
+                    actual_stack->push_front(list_element_t(key, *access_map));
+                    auto it = actual_stack->begin();
+                    try {
+                        access_map->at(key).push_front(stack_element_t(value, *actual_stack));
+                    } catch (...) {
+                        actual_stack->erase(it);
+                        throw;
+                    }
+                }
+                catch (...) {
+                    if (inserted) {
+                        access_map->erase(it);
+                        throw;
+                    }
                 }
             }
             referenced = false;
@@ -143,6 +154,7 @@ namespace cxx {
                 actual_stack = s.actual_stack;
             }
             else {
+                // potential exception
                 auto stack_it = access_map->find(key);
                 stack_element_t pair = stack_it->second.front();
                 stack_it->second.pop_front();
@@ -168,7 +180,8 @@ namespace cxx {
                 return ret_val;
             } else {
                 list_element_t elem = actual_stack->front();
-                std::pair<K const &, V &> ret_val = std::pair<K const &, V &>({elem.it->first, elem.it->second.front().value});
+                std::pair<K const &, V &> ret_val =
+                        std::pair<K const &, V &>({elem.it->first, elem.it->second.front().value});
                 referenced = true;
                 return ret_val;
             }
