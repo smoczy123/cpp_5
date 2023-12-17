@@ -33,10 +33,16 @@ namespace cxx {
                 it = list.begin();
             }
         };
-
+        
+        //stack is represented by a list of map iterators to maintain the order of elements with different keys
+        //and a map of lists (stacks) to maintain the order of elements with the same key
+        //values are only stored in the access_map and can be accessed from the list using map iterator
+        
         std::shared_ptr<std::list<list_element_t>> actual_stack;
         std::shared_ptr<std::map<K, std::list<stack_element_t>>> access_map;
         
+        
+        //copies the stack by pushing all the elements onto a new stack
         static void copy(stack &this_stack, stack const &s){
             stack new_stack;
             std::map<K, stack_iter> iters;
@@ -60,7 +66,8 @@ namespace cxx {
             actual_stack = std::make_shared<std::list<list_element_t>>();
             access_map = std::make_shared<std::map<K, std::list<stack_element_t>>>();
         } 
-
+        
+		//only copies the stack if the user may use the reference to the top element of the stack
         stack(stack const &s) {
             referenced = false;
             if (s.referenced) {
@@ -86,7 +93,9 @@ namespace cxx {
         	return *this;
         }
         
+        
         void push(K const &key, V const &value) {
+       		//copy-on-write semantics
             if (actual_stack.use_count() > 1){
                 stack s;
                 copy(s, *this);
@@ -94,6 +103,8 @@ namespace cxx {
                 access_map = s.access_map;
                 actual_stack = s.actual_stack;
             } else {
+            	//exception safe push
+            	//if push throws an exception, changes made to the stack are reverted
                 bool inserted = false;
                 auto map_it = access_map->begin();
                 if (access_map->count(key) == 0) {
@@ -121,10 +132,12 @@ namespace cxx {
 
         }
 
+		
         void pop() {
             if (size() == 0) {
                 throw std::invalid_argument("");
             }
+            //copy-on-write semantics
             if (actual_stack.use_count() > 1){
                 stack s;
                 copy(s, *this);
@@ -146,6 +159,7 @@ namespace cxx {
             if (count(key) == 0) {
                 throw std::invalid_argument("");
             }
+            //copy-on-write semantics
             if (actual_stack.use_count() > 1){
                 stack s;
                 copy(s, *this);
@@ -170,6 +184,7 @@ namespace cxx {
             if (size() == 0) {
                 throw std::invalid_argument("");
             }
+            //copy-on-write semantics
             if (actual_stack.use_count() > 1){
                 stack s;
                 copy(s, *this);
@@ -199,6 +214,7 @@ namespace cxx {
             if (count(key) == 0) {
                 throw std::invalid_argument("");
             }
+            //copy-on-write semantics
             if (actual_stack.use_count() > 1){
                 stack s;
                 copy(s, *this);
@@ -231,6 +247,7 @@ namespace cxx {
         }
 
         void clear() {
+        	//copy-on-write semantics
             if(actual_stack.use_count() > 1){
                 stack s;
                 copy(s, *this);
@@ -242,7 +259,8 @@ namespace cxx {
         }
 
 
-
+		//iterator satisfying the std::forward_iterator concept
+		//used to traverse keys of elements on the stack
         class const_iterator {
             using c_iter =  typename std::map<K, std::list<stack_element_t>>::const_iterator;
             c_iter iter;
