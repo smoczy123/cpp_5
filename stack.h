@@ -5,7 +5,6 @@
 #include <cstring>
 #include <memory>
 #include <stdexcept>
-#include <iostream>
 
 namespace cxx {
     template <typename K, typename V>
@@ -19,19 +18,14 @@ namespace cxx {
         struct list_element_t {
             typename std::map<K,std::list<stack_element_t>>::iterator it;
 
-            list_element_t(const K &key, std::map<K, std::list<stack_element_t>> &map) {
-                it = map.find(key);
-            }
+            list_element_t(const K &key, std::map<K, std::list<stack_element_t>> &map) : it(map.find(key)) {}
         };
 
         struct stack_element_t {
             V value;
             typename std::list<list_element_t>::iterator it;
 
-            stack_element_t(const V &val, std::list<list_element_t> &list) {
-                value = val;
-                it = list.begin();
-            }
+            stack_element_t(const V &val, std::list<list_element_t> &list) : value(val), it(list.begin()) {}
         };
         
         //stack is represented by a list of map iterators to maintain the order of elements with different keys
@@ -106,8 +100,8 @@ namespace cxx {
             	//exception safe push
             	//if push throws an exception, changes made to the stack are reverted
                 bool inserted = false;
-                auto map_it = access_map->begin();
-                if (access_map->count(key) == 0) {
+                auto map_it = access_map->find(key);
+                if (map_it == access_map->end()) {
                     map_it = access_map->insert({key, std::list<stack_element_t>()}).first;
                     inserted = true;
                 }
@@ -115,7 +109,7 @@ namespace cxx {
                     actual_stack->push_front(list_element_t(key, *access_map));
                     auto it = actual_stack->begin();
                     try {
-                        access_map->at(key).push_front(stack_element_t(value, *actual_stack));
+                        map_it->second.push_front(stack_element_t(value, *actual_stack));
                     } catch (...) {
                         actual_stack->erase(it);
                         throw;
@@ -124,8 +118,8 @@ namespace cxx {
                 catch (...) {
                     if (inserted) {
                         access_map->erase(map_it);
-                        throw;
                     }
+                    throw;
                 }
             }
             referenced = false;
@@ -294,10 +288,10 @@ namespace cxx {
             friend bool operator!= (const const_iterator& a, const const_iterator& b) { return a.iter != b.iter; };
         };
 
-        stack<K, V>::const_iterator cbegin() noexcept {
+        stack<K, V>::const_iterator cbegin() const noexcept {
             return const_iterator((*access_map).cbegin());
         }
-        stack<K, V>::const_iterator cend() noexcept {
+        stack<K, V>::const_iterator cend() const noexcept {
             return const_iterator((*access_map).cend());
         }
 
